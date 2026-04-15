@@ -11,8 +11,9 @@ let _client: SupabaseClient | null = null
 export function getSupabase(): SupabaseClient | null {
   if (_client) return _client
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-    || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!url || !key) return null
   _client = createClient(url, key)
   return _client
@@ -58,7 +59,12 @@ export type CatalogItem = {
   recommended_price: number
   min_order_qty: number
   options: CatalogOption[]
-  stock_status: 'available' | 'low_stock' | 'out_of_stock' | 'restock_soon' | 'discontinued'
+  stock_status:
+    | 'available'
+    | 'low_stock'
+    | 'out_of_stock'
+    | 'restock_soon'
+    | 'discontinued'
   target_age_tags: string[]
   style_tags: string[]
   feature_tags: string[]
@@ -76,7 +82,7 @@ export type CatalogItem = {
 }
 
 export type CatalogOption = {
-  name: string  // 컬러 / 사이즈
+  name: string
   values: CatalogOptionValue[]
 }
 
@@ -109,7 +115,13 @@ export type CartItem = {
   qty: number
 }
 
-export type OrderStatus = '주문접수' | '확인중' | '준비중' | '출고완료' | '취소' | '부분취소'
+export type OrderStatus =
+  | '주문접수'
+  | '확인중'
+  | '준비중'
+  | '출고완료'
+  | '취소'
+  | '부분취소'
 
 export type SellerOrder = {
   id: string
@@ -133,10 +145,12 @@ export type SellerOrderItem = {
   catalog?: CatalogItem
   option_name: string | null
   option_value: string | null
+  sku_id: string | null
   qty: number
   unit_price: number
   subtotal: number
   status: string
+  note?: string | null
 }
 
 export type SellerDocument = {
@@ -163,8 +177,8 @@ export type SellerNotice = {
 // ─────────────────────────────────────────────
 export function stockLabel(status: string): string {
   const m: Record<string, string> = {
-    available:    '주문 가능',
-    low_stock:    '소량 남음',
+    available: '주문 가능',
+    low_stock: '소량 남음',
     out_of_stock: '품절',
     restock_soon: '재입고 예정',
     discontinued: '단종',
@@ -172,10 +186,14 @@ export function stockLabel(status: string): string {
   return m[status] ?? status
 }
 
-export function stockColor(status: string): { bg: string; text: string; border: string } {
+export function stockColor(status: string): {
+  bg: string
+  text: string
+  border: string
+} {
   const m: Record<string, { bg: string; text: string; border: string }> = {
-    available:    { bg: '#ECFDF5', text: '#059669', border: '#A7F3D0' },
-    low_stock:    { bg: '#FFFBEB', text: '#D97706', border: '#FDE68A' },
+    available: { bg: '#ECFDF5', text: '#059669', border: '#A7F3D0' },
+    low_stock: { bg: '#FFFBEB', text: '#D97706', border: '#FDE68A' },
     out_of_stock: { bg: '#FEF2F2', text: '#DC2626', border: '#FECACA' },
     restock_soon: { bg: '#EFF6FF', text: '#2563EB', border: '#BFDBFE' },
     discontinued: { bg: '#F1F5F9', text: '#64748B', border: '#E2E8F0' },
@@ -183,14 +201,18 @@ export function stockColor(status: string): { bg: string; text: string; border: 
   return m[status] ?? { bg: '#F1F5F9', text: '#64748B', border: '#E2E8F0' }
 }
 
-export function orderStatusColor(status: string): { bg: string; text: string; border: string } {
+export function orderStatusColor(status: string): {
+  bg: string
+  text: string
+  border: string
+} {
   const m: Record<string, { bg: string; text: string; border: string }> = {
-    '주문접수': { bg: '#EFF6FF', text: '#2563EB', border: '#BFDBFE' },
-    '확인중':   { bg: '#FFFBEB', text: '#D97706', border: '#FDE68A' },
-    '준비중':   { bg: '#FFF7ED', text: '#EA580C', border: '#FED7AA' },
-    '출고완료': { bg: '#ECFDF5', text: '#059669', border: '#A7F3D0' },
-    '취소':     { bg: '#FEF2F2', text: '#DC2626', border: '#FECACA' },
-    '부분취소': { bg: '#F5F3FF', text: '#7C3AED', border: '#DDD6FE' },
+    주문접수: { bg: '#EFF6FF', text: '#2563EB', border: '#BFDBFE' },
+    확인중: { bg: '#FFFBEB', text: '#D97706', border: '#FDE68A' },
+    준비중: { bg: '#FFF7ED', text: '#EA580C', border: '#FED7AA' },
+    출고완료: { bg: '#ECFDF5', text: '#059669', border: '#A7F3D0' },
+    취소: { bg: '#FEF2F2', text: '#DC2626', border: '#FECACA' },
+    부분취소: { bg: '#F5F3FF', text: '#7C3AED', border: '#DDD6FE' },
   }
   return m[status] ?? { bg: '#F1F5F9', text: '#64748B', border: '#E2E8F0' }
 }
@@ -201,58 +223,18 @@ export function fmt(v: number): string {
 
 export function fmtDate(v: string | null | undefined): string {
   if (!v) return '-'
-  return new Date(v).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+  return new Date(v).toLocaleDateString('ko-KR', {
+    month: 'short',
+    day: 'numeric',
+  })
 }
 
 export function fmtDateTime(v: string | null | undefined): string {
   if (!v) return '-'
-  return new Date(v).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
-
-// ─────────────────────────────────────────────
-// lib/auth.ts
-// 셀러 인증 훅
-// ─────────────────────────────────────────────
-import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-
-export function useSellerAuth() {
-  const [user, setUser] = useState<SellerUser | null>(null)
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
-
-  const checkAuth = useCallback(async () => {
-    const sb = getSupabase()
-    if (!sb) { setLoading(false); return }
-
-    const { data: { session } } = await sb.auth.getSession()
-    if (!session) { router.replace('/login'); return }
-
-    const { data: su } = await sb
-      .from('seller_users')
-      .select('*, seller:sellers(*)')
-      .eq('auth_id', session.user.id)
-      .single()
-
-    if (!su || !su.is_active) {
-      await sb.auth.signOut()
-      router.replace('/login')
-      return
-    }
-
-    setUser(su as SellerUser)
-    // 마지막 로그인 업데이트
-    await sb.from('seller_users').update({ last_login_at: new Date().toISOString() }).eq('id', su.id)
-    setLoading(false)
-  }, [router])
-
-  useEffect(() => { void checkAuth() }, [checkAuth])
-
-  async function logout() {
-    const sb = getSupabase()
-    if (sb) await sb.auth.signOut()
-    router.replace('/login')
-  }
-
-  return { user, loading, logout, refetch: checkAuth }
+  return new Date(v).toLocaleString('ko-KR', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
