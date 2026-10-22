@@ -1,9 +1,10 @@
 'use client'
 // app/login/page.tsx
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getSupabase } from '@/lib/supabase'
+import { getSupabase, getSupabaseEnv } from '@/lib/supabase'
+import { AUTH_MESSAGES, CONFIG_MESSAGES, PROFILE_MESSAGES, checkSupabaseEnv, classifyAuthError, classifyProfile, logAuthCode } from '@/lib/auth-errors'
 
 export default function SellerLoginPage() {
   const router = useRouter()
@@ -13,42 +14,52 @@ export default function SellerLoginPage() {
   const [error, setError] = useState('')
   const [showPw, setShowPw] = useState(false)
 
+  const [notice, setNotice] = useState('')
+  const envProblem = (() => { const { url, key } = getSupabaseEnv(); return checkSupabaseEnv(url, key) })()
+
+  useEffect(() => {
+    if (envProblem) logAuthCode('config', envProblem)
+    if (new URLSearchParams(window.location.search).get('reset') === '1') setNotice('비밀번호를 바꿨습니다. 새 비밀번호로 로그인해 주세요.')
+  }, [envProblem])
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
+    setError(''); setNotice('')
+    if (envProblem) { setError(CONFIG_MESSAGES[envProblem]); return }
     const sb = getSupabase()
-    if (!sb) return
+    if (!sb) { setError(CONFIG_MESSAGES.env_missing_url); return }
 
     setLoading(true)
-    setError('')
+    try {
+      const { data, error: authError } = await sb.auth.signInWithPassword({ email: email.trim(), password })
+      if (authError || !data.session) {
+        const f = classifyAuthError(authError)
+        logAuthCode('signIn', f.code)
+        setError(AUTH_MESSAGES[f.kind])
+        return
+      }
 
-    const { data, error: authError } = await sb.auth.signInWithPassword({ email, password })
-
-    if (authError || !data.session) {
-      setError('이메일 또는 비밀번호가 올바르지 않습니다.')
+      // 로그인 성공 후에도 셀러 계정(seller_users)·셀러사(sellers) 권한을 확인합니다.
+      const profile = await sb
+        .from('seller_users')
+        .select('id, is_active, seller:sellers(status)')
+        .eq('auth_id', data.session.user.id)
+        .maybeSingle()
+      const p = classifyProfile(profile as Parameters<typeof classifyProfile>[0])
+      if (p.kind !== 'ok') {
+        logAuthCode('profile', p.code)
+        await sb.auth.signOut()
+        setError(PROFILE_MESSAGES[p.kind])
+        return
+      }
+      router.replace('/')
+    } catch (err) {
+      const f = classifyAuthError(err as { message?: string; name?: string })
+      logAuthCode('signIn', f.code)
+      setError(AUTH_MESSAGES[f.kind === 'unknown' ? 'network' : f.kind])
+    } finally {
       setLoading(false)
-      return
     }
-
-    const { data: su } = await sb
-      .from('seller_users')
-      .select('id, is_active, seller:sellers(status)')
-      .eq('auth_id', data.session.user.id)
-      .single()
-
-    if (!su) {
-      await sb.auth.signOut()
-      setError('셀러 포털 접근 권한이 없습니다. 하루에픽 고객센터로 문의해주세요.')
-      setLoading(false)
-      return
-    }
-    if (!su.is_active || (su.seller as any)?.status !== 'active') {
-      await sb.auth.signOut()
-      setError('계정이 비활성화 상태입니다. 고객센터로 문의해주세요.')
-      setLoading(false)
-      return
-    }
-
-    router.replace('/')
   }
 
   return (
@@ -57,6 +68,7 @@ export default function SellerLoginPage() {
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css');
         * { box-sizing:border-box; font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif; }
         body { margin:0; background:#F8FAFC; }
+        @keyframes spin { to { transform: rotate(360deg) } }
         @keyframes fadeUp { from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)} }
         input:focus { outline:none; }
         .inp { width:100%; padding:14px 16px; border-radius:14px; border:1.5px solid #E5E7EB;
@@ -91,8 +103,13 @@ export default function SellerLoginPage() {
           <div style={{ background:'#fff', borderRadius:24, border:'1px solid #E0E7FF',
             padding:'32px 28px', boxShadow:'0 20px 60px rgba(79,70,229,0.1)' }}>
 
+            {notice && (
+              <div role="status" style={{ marginBottom:20, padding:'12px 16px', borderRadius:12,
+                background:'#ECFDF5', border:'1px solid #A7F3D0', color:'#047857',
+                fontSize:14, fontWeight:600, lineHeight:1.5 }}>{notice}</div>
+            )}
             {error && (
-              <div style={{ marginBottom:20, padding:'12px 16px', borderRadius:12,
+              <div role="alert" style={{ marginBottom:20, padding:'12px 16px', borderRadius:12,
                 background:'#FEF2F2', border:'1px solid #FECACA', color:'#DC2626',
                 fontSize:14, fontWeight:600, lineHeight:1.5 }}>
                 {error}
@@ -143,8 +160,13 @@ export default function SellerLoginPage() {
               </button>
             </form>
 
+            <div style={{ marginTop:16, textAlign:'center' }}>
+              <a href="/forgot-password" style={{ color:'#4F46E5', fontWeight:700, fontSize:14, textDecoration:'none' }}>
+                비밀번호를 잊으셨나요?
+              </a>
+            </div>
             <div style={{ marginTop:20, textAlign:'center', fontSize:13, color:'#9CA3AF' }}>
-              계정 문의 · 비밀번호 재설정<br />
+              계정 문의<br />
               <a href="mailto:help@haruepick.com"
                 style={{ color:'#4F46E5', fontWeight:700, textDecoration:'none' }}>
                 help@haruepick.com

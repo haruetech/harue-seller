@@ -103,7 +103,7 @@ function TopBar({ title, pathname, userName }: {
 }
 
 // 공개 경로 (인증 불필요)
-const PUBLIC_PATHS = ['/login']
+const PUBLIC_PATHS = ['/login', '/forgot-password', '/reset-password']
 
 export default function SellerRootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()

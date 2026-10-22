@@ -8,14 +8,19 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js'
 // ── Supabase 클라이언트 ──
 let _client: SupabaseClient | null = null
 
+// NEXT_PUBLIC_* 값은 빌드 시점에 정적으로 치환되므로 process.env.NAME 형태로 직접 참조해야 합니다.
+export function getSupabaseEnv() {
+  return {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    key: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  }
+}
+
 export function getSupabase(): SupabaseClient | null {
   if (_client) return _client
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const { url, key } = getSupabaseEnv()
   if (!url || !key) return null
-  _client = createClient(url, key)
+  _client = createClient(url.trim(), key.trim())
   return _client
 }
 
